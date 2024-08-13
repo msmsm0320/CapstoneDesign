@@ -3,15 +3,26 @@ import cv2
 import matplotlib.pyplot as plt
 
 def detect_red(img):
-    red_range = ([35, 40, 0], [85, 255, 255])
-    red_lower_bound = np.array([35, 40, 0], dtype="uint8")
-    red_upper_bound = np.array([85, 255, 255], dtype="uint8")
-    cvt = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    mask = cv2.inRange(cvt, lowerb=red_lower_bound, upperb=red_upper_bound)
-    result = cv2.bitwise_and(cvt, cvt, mask=mask)
+    # HSV 색 공간으로 변환
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    
+    # 빨간색 범위 정의 (두 범위를 사용해 원형으로 표현되는 빨간색을 모두 포함)
+    lower_red1 = np.array([0, 100, 100], dtype="uint8")
+    upper_red1 = np.array([10, 255, 255], dtype="uint8")
+    lower_red2 = np.array([160, 100, 100], dtype="uint8")
+    upper_red2 = np.array([180, 255, 255], dtype="uint8")
+    
+    # 빨간색 마스크 생성
+    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+    mask = cv2.bitwise_or(mask1, mask2)
+    
+    # 원본 이미지에 마스크 적용
+    result = cv2.bitwise_and(img, img, mask=mask)
+    
     return result, mask
 
-# 각 이미지 파일 경로
+# 이미지 파일 경로
 image_paths = [
     "./Success_pic/fallen_frame_20240812_112747.png",
     "./Success_pic/images.jpg",
@@ -42,27 +53,5 @@ for path in image_paths:
     plt.show()
 
     # 빨간색 비율 계산
-    red_proportion = round(len(result[result != 0]) / (result.shape[0] * result.shape[1] * 3), 2)
+    red_proportion = round(np.sum(mask > 0) / (mask.shape[0] * mask.shape[1]), 2)
     print(f'Proportion of red in {path}: {red_proportion}')
-
-
-"""import numpy as np
-import cv2
-import matplotlib.pyplot as plt
-
-def detect_red(img):
-    red_range = ([10, 10, 70], [80, 80, 255])
-    lower = np.array(red_range[0], dtype = "uint8")
-    upper = np.array(red_range[1], dtype = "uint8")
-    cvt = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    mask = cv2.inRange(cvt, lowerb = lower, upperb = upper)
-    result = cv2.bitwise_and(cvt, cvt, mask = mask)
-    return result
-
-image_path = "./Success_pic/black_check.jpeg"
-img = cv2.imread(image_path)
-result = detect_red(img)
-result = np.hstack([img, result])
-plt.imshow(result)
-print('proportion of red : {}'.format(round(len(result[result!=0])/(result.shape[0]*result.shape[1]*3),2)))
-"""
