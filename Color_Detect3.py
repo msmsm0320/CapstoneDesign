@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-# 색상 정보를 저장할 사전
+# 색상 정보를 저장
 color_info = {}
 
 class Watcher:

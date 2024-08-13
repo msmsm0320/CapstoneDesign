@@ -14,7 +14,7 @@ fallen_count = 0
 
 previous_y_values = None # previous frame y values to compare
 first_point_threshold = None # difference in distance between keypoint 0 
-second_point_threshold = None # difference in diqqqqqqqstance between keypoint 5
+second_point_threshold = None # difference in diqqqqqqstance between keypoint 5
 falling_threshold = None # falling threshold
 fallen_state = False # fallen state identifier
 MIN_ELAPSED_TIME_THRESHOLD = 5
@@ -230,7 +230,7 @@ def save_video_clip():
 
 
 # Replace 'your_video.mp4' with the path to your MP4 file
-results = model(source='./test.mp4', show=True, conf=0.3, stream=False, save=False)
+results = model(source='./test.mp4', show=True, conf=0.3, stream=True, save=False)
 #results = model(source=0, show=True, conf=0.3, stream=True, save=True)
 
 
