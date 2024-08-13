@@ -1,103 +1,118 @@
+import os
+import time
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from collections import deque
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
-def detect_color(img, lower_bounds, upper_bounds):
-    # HSV 색 공간으로 변환
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+# 색상 정보를 저장할 사전
+color_info = {}
+
+class Watcher:
+    def __init__(self, folder_to_watch):
+        self.folder_to_watch = folder_to_watch
+        self.observer = Observer()
+
+    def run(self):
+        event_handler = Handler()
+        self.observer.schedule(event_handler, self.folder_to_watch, recursive=False)
+        self.observer.start()
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            self.observer.stop()
+        self.observer.join()
+
+class Handler(FileSystemEventHandler):
+    def on_created(self, event):
+        if event.is_directory:
+            return None
+        elif event.event_type == 'created':
+            print(f"File created: {event.src_path}")
+            process_image(event.src_path)
+
+def process_image(path):
+    if not os.path.exists(path):
+        print(f"File not found: {path}")
+        return
     
-    # 여러 범위에 대한 마스크 생성
-    masks = [cv2.inRange(hsv, lower, upper) for lower, upper in zip(lower_bounds, upper_bounds)]
-    
-    # 모든 마스크를 결합
-    mask = np.bitwise_or.reduce(masks)
-    
-    # 원본 이미지에 마스크 적용
-    result = cv2.bitwise_and(img, img, mask=mask)
-    
-    return result, mask
-
-# 색상 범위 정의 (빨간색, 파란색, 녹색)
-color_ranges = {
-    "red": [
-        (np.array([0, 100, 100], dtype="uint8"), np.array([10, 255, 255], dtype="uint8")),
-        (np.array([160, 100, 100], dtype="uint8"), np.array([179, 255, 255], dtype="uint8"))
-    ],
-    "blue": [
-        (np.array([100, 100, 100], dtype="uint8"), np.array([140, 255, 255], dtype="uint8"))
-    ],
-    "green": [
-        (np.array([40, 100, 100], dtype="uint8"), np.array([70, 255, 255], dtype="uint8"))
-    ]
-}
-
-# 이미지 파일 경로
-image_paths = [
-    "./Success_pic/fallen_frame_20240812_112747.png",
-    "./Success_pic/images.jpg",
-    "./Success_pic/AKR20230316068500805_19_i_P4.jpg",
-    "./Success_pic/black_check.jpeg",
-    "./Success_pic/red_vest.jpg",
-    "./Success_pic/blue1.jpg",
-    "./Success_pic/blue2.jpg",
-    "./Success_pic/green.jpg",
-    "./Success_pic/orange1.jpg"
-]
-
-# 임계값 설정 (예: 0.1은 10%)
-threshold = 0.1
-
-# 결과를 저장할 큐
-detected_colors = deque()
-
-for path in image_paths:
     img = cv2.imread(path)
+    if img is None:
+        print(f"Failed to read the image. Skipping file: {path}")
+        return
+
+    # 사진의 생성 시간을 키로 사용
+    file_creation_time = time.ctime(os.path.getctime(path))
+
+    color_ranges = {
+        "red": [
+            (np.array([0, 100, 100], dtype="uint8"), np.array([10, 255, 255], dtype="uint8")),
+            (np.array([160, 100, 100], dtype="uint8"), np.array([179, 255, 255], dtype="uint8"))
+        ],
+        "blue": [
+            (np.array([100, 100, 100], dtype="uint8"), np.array([140, 255, 255], dtype="uint8"))
+        ],
+        "green": [
+            (np.array([40, 100, 100], dtype="uint8"), np.array([70, 255, 255], dtype="uint8"))
+        ]
+    }
+
+    threshold = 0.1
+    detected_colors = []
+
     print(f"Processing image: {path}")
-    
-    color_found = False  # 임계값을 넘는 색상이 있는지 확인하기 위한 플래그
+
+    color_found = False
     
     for color_name, bounds in color_ranges.items():
         lower_bounds, upper_bounds = zip(*bounds)
         result, mask = detect_color(img, lower_bounds, upper_bounds)
-        
-        # 색상 비율 계산
+
         color_proportion = np.sum(mask > 0) / (mask.shape[0] * mask.shape[1])
-        
-        # 임계값 초과 시 색상 저장 및 표시
+
         if color_proportion > threshold:
-            detected_colors.append((path, color_name, color_proportion))
-            print(f"Detected {color_name} with proportion {round(color_proportion, 2)} in {path}\n")
-            
-            # 원본 이미지와 결과 이미지를 가로로 합침
+            detected_colors.append((color_name, color_proportion))
+            print(f"Detected {color_name} with proportion {round(color_proportion, 2)} in {path}")
+
             result_combined = np.hstack([img, result])
-            
-            # 결과 이미지와 마스크를 시각화
+
             plt.figure(figsize=(12, 6))
             plt.subplot(1, 2, 1)
             plt.imshow(cv2.cvtColor(result_combined, cv2.COLOR_BGR2RGB))
             plt.title(f'Original and {color_name.capitalize()} Detected')
             plt.axis('off')
-            
+
             plt.subplot(1, 2, 2)
             plt.imshow(mask, cmap='gray')
             plt.title(f'{color_name.capitalize()} Mask')
             plt.axis('off')
-            
+
             plt.show()
             
-            color_found = True  # 임계값을 넘는 색상이 있음을 표시
-    
-    # 임계값을 넘는 색상이 없을 경우
-    if not color_found:
-        detected_colors.append((path, "Undefined", 0))
-        print(f"No significant color detected in {path}, marked as Undefined.\n")
+            color_found = True
 
-# 큐에 저장된 결과 출력
-print("\nSummary of detected colors above threshold:")
-while detected_colors:
-    path, color_name, proportion = detected_colors.popleft()
-    if color_name == "Undefined":
-        print(f"Image: {path} - No significant color detected (Undefined)")
-    else:
-        print(f"Image: {path}, Color: {color_name}, Proportion: {round(proportion, 2)}")
+    # 탐지된 색상이 없으면 Undefined로 저장
+    if not color_found:
+        detected_colors.append(("Undefined", 0))
+        print(f"No significant color detected in {path}, marked as Undefined.")
+
+    # 색상 정보를 사전에 저장
+    color_info[file_creation_time] = detected_colors
+
+    # color_info 사전 전체를 출력
+    print("\nCurrent color_info dictionary:")
+    print(color_info)
+
+def detect_color(img, lower_bounds, upper_bounds):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    masks = [cv2.inRange(hsv, lower, upper) for lower, upper in zip(lower_bounds, upper_bounds)]
+    mask = np.bitwise_or.reduce(masks)
+    result = cv2.bitwise_and(img, img, mask=mask)
+    return result, mask
+
+if __name__ == '__main__':
+    folder_to_watch = "./Success_pic"  # 감시할 폴더 경로
+    watcher = Watcher(folder_to_watch)
+    watcher.run()
