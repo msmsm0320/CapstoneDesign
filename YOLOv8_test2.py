@@ -230,7 +230,7 @@ def save_video_clip():
 
 
 # Replace 'your_video.mp4' with the path to your MP4 file
-results = model(source='./test.mp4', show=True, conf=0.3, stream=False, save=False)
+results = model(source='./test.mp4', show=True, conf=0.3, stream=True, save=False)
 #results = model(source=0, show=True, conf=0.3, stream=True, save=True)
 
 
