@@ -227,7 +227,7 @@ class FallAndColorDetector(FileSystemEventHandler):
                 break
             except PermissionError:
                 print(f"Attempt {attempt + 1} of {max_attempts}: Permission denied for file {path}. Retrying...")
-                time.sleep(1)  # 1초 대기 후 다시 시도
+                time.sleep(1)
         else:
             print(f"Failed to open the file after {max_attempts} attempts: {path}")
             return
@@ -257,7 +257,7 @@ class FallAndColorDetector(FileSystemEventHandler):
             color_proportion = np.sum(mask > 0) / (mask.shape[0] * mask.shape[1])
             if color_proportion > threshold:
 
-            # 해당 부분에 Flask 연동 될 수 있게 수정하면 됨(color_name => 색상, color_proportion => 색상 비율)
+            # 해당 부분에 Flask 연동 될 수 있게 수정하면 됨(color_name => 색상, color_proportion => 색상 비율로 설정)
 
                 detected_colors.append((color_name, color_proportion))
                 print(f"Detected {color_name} with proportion {round(color_proportion, 2)} in {path}")
